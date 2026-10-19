@@ -1,9 +1,15 @@
 // RESEARCHER AGENT. Owner: research teammate.
 // Receives the idea (plus any corrected facts) and returns structured market research.
-// Uses OpenAI's web_search tool, which covers the challenge's "at least one tool" rule.
+// Uses a web search tool, which covers the challenge's "at least one tool" rule.
+//
+// Which engine runs (checked in this order):
+//   1. ANTHROPIC_API_KEY set  -> the Claude Researcher in ./claude-researcher (web search + estimate math)
+//   2. OPENAI_API_KEY set     -> the OpenAI web_search call below
+//   3. neither, or MOCK_AGENTS=true -> the mock, so the whole flow runs without a key
 
 import { zodTextFormat } from "openai/helpers/zod";
 import { MODEL, openai, mocksEnabled } from "@/lib/openai";
+import { claudeResearcherEnabled, runClaudeResearcher } from "./claude-researcher/pipeline";
 import { type Research, type ResearcherInput, ResearchSchema } from "./types";
 
 const INSTRUCTIONS = `You are the Researcher on a startup advisory team.
@@ -15,6 +21,7 @@ market size and demand, competitors, pricing benchmarks, and trends.
   affected facts, keep the rest, and lower confidence where the update creates doubt.`;
 
 export async function runResearcher(args: ResearcherInput): Promise<Research> {
+  if (claudeResearcherEnabled()) return runClaudeResearcher(args);
   if (mocksEnabled()) return mockResearch(args);
 
   const response = await openai().responses.parse({

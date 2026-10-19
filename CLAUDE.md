@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run dev`: dev server at http://localhost:3000
 - `npm run build`: production build (also the main type check, since there is no separate `tsc` script)
 - `npm run lint`: ESLint (flat config, `eslint-config-next` core-web-vitals + typescript)
+- `npm run researcher`: the standalone interactive Researcher in the terminal (needs `ANTHROPIC_API_KEY`)
 
 No test runner is set up yet.
 
@@ -49,6 +50,7 @@ Because the decision gate is a human step, the workflow is split across separate
 - `lib/agent-team.ts`: orchestration. It controls the order of agent calls, the handoffs, the one-retry plan revision and the run log. The routes are thin wrappers around it.
 - `lib/agents/types.ts`: shared Zod schemas and types for every handoff. They double as OpenAI structured-output formats, so every field must be required (use `.nullable()`, not `.optional()`).
 - `lib/agents/researcher.ts` → `runResearcher()` (uses the `web_search` tool), `critic.ts` → `reviewIdea()` and `reviewPlan()`, `strategist.ts` → `runStrategist()`. Each file holds its agent's prompt, its OpenAI call and a mock.
+- `lib/agents/claude-researcher/`: the Researcher owner's Claude engine. `runResearcher()` uses it (via `pipeline.ts`) when `ANTHROPIC_API_KEY` is set, falling back to the OpenAI call, then the mock. `pipeline.ts` ends with a `submit_research` tool whose schema is generated from `ResearchSchema`, so the handoff is validated against the shared contract. The same engine also powers the standalone `/research` page (`session.ts`, with questions and visuals) and `npm run researcher`. `/api/researcher` is that page's streaming route and is not part of the 3-agent flow.
 - `lib/openai.ts`: the shared client and `MODEL` (from `OPENAI_MODEL`). `mocksEnabled()` is true when `OPENAI_API_KEY` is unset or `MOCK_AGENTS=true`. In that case every agent returns its mock, so the whole flow runs without a key.
 
 ## Team ownership
@@ -57,7 +59,7 @@ Each agent file belongs to one person, who works on their own branch: researcher
 
 ## Setup
 
-Copy `.env.example` to `.env.local` and set `OPENAI_API_KEY`. Without a key, the app runs on mock data.
+Copy `.env.example` to `.env.local` and set `OPENAI_API_KEY`. Without a key, the app runs on mock data. Optionally set `ANTHROPIC_API_KEY` to run the Researcher on Claude; the other agents still use OpenAI. See README.md for all settings.
 
 ## Workflow
 
